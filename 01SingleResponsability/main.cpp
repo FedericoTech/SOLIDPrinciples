@@ -44,113 +44,113 @@ const std::string kPrefix = "user-";
 
 #ifdef BAD_CODE
 
-/**
- * This class manages user operations
- * The problem with this class is that it is also responsible for the queries and for the username formatting.
- * so this class has more than a single responsibility.
- */
-struct UserManager {
-	UserManager(Database& database): db{database} {}
+	/**
+	 * This class manages user operations
+	 * The problem with this class is that it is also responsible for the queries and for the username formatting.
+	 * so this class has more than a single responsibility.
+	 */
+	struct UserManager {
+		UserManager(Database& database): db{database} {}
 
-	void createUser(std::string username)
-	{
-		//if user name doesn't start with
-		if(username.rfind(kPrefix, 0) == std::string::npos){
-			username = kPrefix + username;
+		void createUser(std::string username)
+		{
+			//if user name doesn't start with
+			if(username.rfind(kPrefix, 0) == std::string::npos){
+				username = kPrefix + username;
+			}
+
+			db << "INSERT INTO USERS (name) VALUES (?);" << username;
 		}
 
-		db << "INSERT INTO USERS (name) VALUES (?);" << username;
-	}
+		std::vector<std::string> getUsersReport()
+		{
+			std::vector<std::string> users;
 
-	std::vector<std::string> getUsersReport()
-	{
-		std::vector<std::string> users;
+			db << "SELECT name FROM users" >> [&users](std::string &user) {
+				users.push_back(user.erase(0, kPrefix.length()));
+			};
 
-		db << "SELECT name FROM users" >> [&users](std::string &user) {
-			users.push_back(user.erase(0, kPrefix.length()));
-		};
+			return users;
+		}
 
-		return users;
-	}
-
-protected:
-	Database &db;
-};
+	protected:
+		Database &db;
+	};
 
 #else //NOW THE GOOD CODE
 
-/**
- * we have this class that takes care of the name format
- */
-struct UsernameFormater {
-	~UsernameFormater() = default;
+	/**
+	 * we have this class that takes care of the name format
+	 */
+	struct UsernameFormater {
+		~UsernameFormater() = default;
 
-	std::string format(std::string username){
-		//if user name doesn't start with
-		if(username.rfind(kPrefix, 0) == std::string::npos){
-			return kPrefix + username;
+		std::string format(std::string username){
+			//if user name doesn't start with
+			if(username.rfind(kPrefix, 0) == std::string::npos){
+				return kPrefix + username;
+			}
+
+			return username;
 		}
 
-		return username;
-	}
-
-	std::string getReadableName(std::string input){
-		return input.erase(0, kPrefix.length());
-	}
-};
-
-/**
- * we have this class that takes care of the SQL queries
- * it also makes use of the UsernameFormater class instead of formating the name by itself.
- */
-
-struct UserModel {
-	UserModel(Database& database): db{database} {}
-
-	~UserModel() = default;
-
-	void addUser(std::string usarname){
-		db << "INSERT INTO USERS (name) VALUES (?);" << uf.format(usarname);
+		std::string getReadableName(std::string input){
+			return input.erase(0, kPrefix.length());
+		}
 	};
 
-	std::vector<std::string> getAllUsers()
-	{
-		std::vector<std::string> users;
+	/**
+	 * we have this class that takes care of the SQL queries
+	 * it also makes use of the UsernameFormater class instead of formating the name by itself.
+	 */
 
-		db << "SELECT name FROM users" >> [&users, this](std::string &user) {
-			users.push_back(this->uf.getReadableName(user));
+	struct UserModel {
+		UserModel(Database& database): db{database} {}
+
+		~UserModel() = default;
+
+		void addUser(std::string usarname){
+			db << "INSERT INTO USERS (name) VALUES (?);" << uf.format(usarname);
 		};
 
-		return users;
-	}
+		std::vector<std::string> getAllUsers()
+		{
+			std::vector<std::string> users;
 
-protected:
-	UsernameFormater uf;
-	Database &db;
-};
+			db << "SELECT name FROM users" >> [&users, this](std::string &user) {
+				users.push_back(this->uf.getReadableName(user));
+			};
 
-/**
- * Now UserManager only does its own concern whilst offering the same interface.
- */
-struct UserManager {
+			return users;
+		}
 
-	UserManager(Database& database): um(UserModel{database}) {}
+	protected:
+		UsernameFormater uf;
+		Database &db;
+	};
 
-	~UserManager(){}
+	/**
+	 * Now UserManager only does its own concern whilst offering the same interface.
+	 */
+	struct UserManager {
 
-	void createUser(std::string username)
-	{
-		um.addUser(username);
-	}
+		UserManager(Database& database): um(UserModel{database}) {}
 
-	std::vector<std::string> getUsersReport()
-	{
-		return um.getAllUsers();
-	}
+		~UserManager(){}
 
-protected:
-	UserModel um;
-};
+		void createUser(std::string username)
+		{
+			um.addUser(username);
+		}
+
+		std::vector<std::string> getUsersReport()
+		{
+			return um.getAllUsers();
+		}
+
+	protected:
+		UserModel um;
+	};
 
 #endif //THE GOOD CODE
 
