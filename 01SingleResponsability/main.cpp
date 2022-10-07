@@ -152,7 +152,7 @@ const std::string kPrefix = "user-";
 		UserModel um;
 	};
 
-#endif //THE GOOD CODE
+#endif  //THE GOOD CODE
 
 int main()
 {
